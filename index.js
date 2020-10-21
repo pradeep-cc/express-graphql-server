@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import { typeDefs, resolvers } from './schema';
 
 
-const start = async () => {
+const start = async () => {  
     const app = express();
 
     const server = new ApolloServer({ typeDefs, resolvers });
@@ -17,11 +17,11 @@ const start = async () => {
       connectTimeoutMS: 20000
     });
 
-    app.listen(8080, (error) => {
-        if(error) console.log("ERRROR")
-        console.log(`listening: http://localhost:8080${server.graphqlPath}`);
+    app.listen(process.env.PORT || 3000, (error) => {
+      if (error) console.log("ERRROR");
+      console.log(`listening: http://localhost:8080${server.graphqlPath}`);
     });
-
+        
 }
 
 start()
