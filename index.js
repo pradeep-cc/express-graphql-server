@@ -23,7 +23,7 @@ const start = async () => {
 
     app.listen(process.env.PORT || 3000, (error) => {
       if (error) console.log("ERRROR");
-      console.log(`listening: http://localhost:8080${server.graphqlPath}`);
+      console.log(`listening: http://localhost:3000${server.graphqlPath}`);
     });
         
 }
