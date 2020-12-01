@@ -2,6 +2,14 @@ import { gql, UserInputError } from "apollo-server-express";
 import Event from "../models/Event";
 import Category from "../models/Category";
 import User from "../models/User";
+require("dotenv").config();
+
+const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+
+const client = require("twilio")(twilioAccountSid, twilioAuthToken);
+
+
 
 let drops = [];
 
@@ -25,12 +33,24 @@ export const typeDefs = gql`
 
     createUser(data: CreateUserInput): CreateUserPayload
     updateUser(data: UpdateUserInput): UpdateUserPayload
+    sendOtp(data: SendOtpInput): SendOtpPayload
+  }
+
+
+  input SendOtpInput{
+    phone: String!
+  }
+
+  type SendOtpPayload {
+    success: Boolean
+    status: Int
   }
 
   type User {
     id: ID!
     phone: String
     name: String
+    otp: String!
     preferences: [UserPreference]
   }
 
@@ -42,6 +62,7 @@ export const typeDefs = gql`
 
   input loginUser {
     phone: String!
+    otp: String!
   }
 
   type LoginUserPayload {
@@ -54,6 +75,8 @@ export const typeDefs = gql`
 
   input UpdateUserInput {
     id: ID!
+    phone: String
+    name: String
     preferences: [UserPreferenceInput]
   }
 
@@ -90,7 +113,7 @@ export const typeDefs = gql`
     event: Event
   }
 
-  type DeleteEventPayload{
+  type DeleteEventPayload {
     success: Boolean
   }
 
@@ -110,21 +133,22 @@ export const typeDefs = gql`
   }
 
   type Event {
-    id: ID
-    title: String
+    id: ID!
+    title: String!
     type: String
     isPaid: Boolean
     venue: Venue
     description: String
+    imageUrl: String
     startDate: String
     startTime: String
     endTime: String
     userId: String
     occurrences: [Occurrence]
     outcomes: [Outcome]
-    isOnline: Boolean
-    slug: String
-    isLive: Boolean
+    isOnline: Boolean!
+    slug: String!
+    isLive: Boolean!
   }
 
   type Outcome {
@@ -281,19 +305,25 @@ export const resolvers = {
 
         const user = await User.find({ phone: payload.phone });
         let res = user[0];
+        
+        //validate otp
 
-        if (user.length > 0) {
-          let data = {
-            user: {
-              id: res.id,
-              name: res.name,
-              phone: res.phone,
-            },
-          };
+        if(res){
+          if(res.otp == payload.otp){// Validate saved otp timestamp in the doc [Refer sendOtp]
+            let data = {
+              user: {
+                id: res.id,
+                name: res.name,
+                phone: res.phone,
+              },
+            };
 
-          return data;
-        } else {
-          return null;
+            return data;
+          }
+
+          else{
+            return null;
+          }
         }
       } catch (err) {
         return null;
@@ -320,10 +350,12 @@ export const resolvers = {
         console.log(payload);
         const number = await Event.countDocuments();
 
-        payload.id = Math.floor(Math.random() * 1000000);;
+        payload.id = Math.floor(Math.random() * 1000000);
         payload.slug =
           payload.title.toLowerCase().split(" ").join("-") + `-${payload.id}`;
         payload.isLive = false; //defaulting event status to not live
+        payload.imageUrl =
+          "https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE4AjF5";
         const event = await new Event(payload);
         const res = await event.save();
 
@@ -342,6 +374,7 @@ export const resolvers = {
               outcomes: res.outcomes,
               userId: res.userId,
               isLive: res.isLive,
+              imageUrl: res.imageUrl
             },
           };
           return data;
@@ -494,5 +527,70 @@ export const resolvers = {
         return null;
       }
     },
+
+    sendOtp: async (parent, args) => {
+      try {
+          let phone = args.data.phone;
+          //Validate phone number here;
+          let countryCode = '+91';
+          let phoneWithCountryCode = countryCode + phone;
+          let otp = Math.floor(100000 + Math.random() * 900000);
+
+          const user = await User.find({ phone });
+
+          console.log(user);
+
+          if(user.length == 0){ //User not found. Creating a doc with user phone
+            //new user creating a record
+            let userId = Math.floor(1000 + Math.random() * 9000).toString(); //Need to find a better way to store ids of all data models
+            const newUser = new User({ id: userId, phone });
+            const result = await newUser.save();
+
+            if(!result){
+              return {
+                status: 500,
+                success: false
+              }
+            }
+          }
+
+          //Updating otp value in user doc. Store timestamp to validate otp in loginUser resolver
+          let query = { phone }
+          let updateData = {
+            otp: otp.toString(),
+            // otpTimestamp: 
+          }
+          
+          const result = await client.messages.create({
+            body: `Hey! use this OTP to login ${otp}`,
+            from: process.env.TWILIO_NUMBER,
+            to: phoneWithCountryCode,
+          });
+
+          if(result && result.sid){
+            const user = await User.findOneAndUpdate(query, updateData, { new: true });
+            if(user){
+              return {
+                success: true,
+                status: 200
+              }
+            }
+          }
+          else{
+            return {
+              success: false,
+              status: 500,
+            };
+          }
+      } 
+      catch(error) {
+        console.log(error);
+        return {
+          success: false,
+          status: 500,
+        };
+      }
+    }
   },
 };
+

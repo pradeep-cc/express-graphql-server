@@ -13,6 +13,7 @@ const schema = new mongoose.Schema({
   description: String,
   occurrences: Array,
   outcomes: Array,
+  imageUrl: String,
   venue: Object,
   isOnline: Boolean,
   slug: String,

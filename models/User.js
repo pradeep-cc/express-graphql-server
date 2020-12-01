@@ -4,7 +4,8 @@ const schema = new mongoose.Schema({
   id: String,
   name: String,
   phone: String,
-  preferences: Array
+  preferences: Array,
+  otp: String
 });
 
 const User = mongoose.model("User", schema);
