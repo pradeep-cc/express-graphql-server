@@ -2,15 +2,33 @@ import { ApolloServer } from 'apollo-server-express';
 import express from 'express';
 import mongoose from 'mongoose';
 import { typeDefs, resolvers } from './schema';
+const jwt = require("jsonwebtoken");
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+const getUser = (token) => {
+  try {
+    if (token) {
+      return jwt.verify(token, JWT_SECRET);
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+};
 
 
 const start = async () => {  
     const app = express();
 
-    const server = new ApolloServer({ 
-      typeDefs, 
+    const server = new ApolloServer({
+      typeDefs,
       resolvers,
-      playground: true
+      context: ({ req }) => {
+        const token = req.get("Authorization") || "";
+        return { user: getUser(token.replace("Bearer", "")) };
+      },
+      playground: true,
     });
 
     server.applyMiddleware({ app });

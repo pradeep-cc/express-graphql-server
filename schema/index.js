@@ -2,6 +2,8 @@ import { gql, UserInputError } from "apollo-server-express";
 import Event from "../models/Event";
 import Category from "../models/Category";
 import User from "../models/User";
+const jsonwebtoken = require("jsonwebtoken");
+
 require("dotenv").config();
 
 const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -9,9 +11,6 @@ const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
 
 const client = require("twilio")(twilioAccountSid, twilioAuthToken);
 
-
-
-let drops = [];
 
 export const typeDefs = gql`
   type Query {
@@ -66,6 +65,7 @@ export const typeDefs = gql`
   }
 
   type LoginUserPayload {
+    token: String!
     user: User
   }
 
@@ -243,7 +243,7 @@ export const resolvers = {
   Query: {
     message: () => "Hello world!",
 
-    events: async (parent, args) => {
+    events: async (parent, args, { user }) => {
       try {
         let payload = { ...args.data };
         let query;
@@ -251,12 +251,18 @@ export const resolvers = {
           query = { isOnline: payload.isOnline, isLive: true };
         }
 
-        if (payload.hasOwnProperty("userId")) {
+        if (user) {
+          //Returning null if jwt token signed userId is not equal to payload userId
+          if(user.id != payload.userId){
+            return null;
+          }
           query = { userId: payload.userId };
+        }
+        else{
+          return null;
         }
 
         let data = await Event.find(query);
-        console.log(data);
         return data;
       } catch (err) {
         console.log(err);
@@ -305,12 +311,19 @@ export const resolvers = {
 
         const user = await User.find({ phone: payload.phone });
         let res = user[0];
-        
+
         //validate otp
 
-        if(res){
-          if(res.otp == payload.otp){// Validate saved otp timestamp in the doc [Refer sendOtp]
+        if (res) {
+          if (res.otp == payload.otp) {
+            // Validate saved otp timestamp in the doc [Refer sendOtp]
+            const token = jsonwebtoken.sign(
+              { id: res.id },
+              process.env.JWT_SECRET,
+              { expiresIn: "1y" }
+            );
             let data = {
+              token,
               user: {
                 id: res.id,
                 name: res.name,
@@ -319,24 +332,28 @@ export const resolvers = {
             };
 
             return data;
-          }
-
-          else{
+          } else {
             return null;
           }
         }
       } catch (err) {
+        console.log(err);
         return null;
       }
     },
 
-    user: async (parent, args) => {
+    user: async (parent, args, { user }) => {
       try {
-        let userId = args.id;
-
-        const user = await User.find({ id: userId });
         console.log(user);
-        return user[0];
+
+        //User from context
+
+        if(!user) return null;
+        let userId = args.id;
+        if(user.id != userId) return null;
+        const result = await User.find({ id: userId });
+        
+        return result[0];
       } catch (err) {
         console.log(err);
       }
@@ -374,7 +391,7 @@ export const resolvers = {
               outcomes: res.outcomes,
               userId: res.userId,
               isLive: res.isLive,
-              imageUrl: res.imageUrl
+              imageUrl: res.imageUrl,
             },
           };
           return data;
@@ -418,15 +435,12 @@ export const resolvers = {
 
         const event = await Event.findOneAndDelete({ id: eventId });
 
-        if(event){
+        if (event) {
           return {
-            success: true
-          }
+            success: true,
+          };
         }
-        
-
-      }
-      catch(error){
+      } catch (error) {
         console.log(error);
       }
     },
@@ -530,67 +544,68 @@ export const resolvers = {
 
     sendOtp: async (parent, args) => {
       try {
-          let phone = args.data.phone;
-          //Validate phone number here;
-          let countryCode = '+91';
-          let phoneWithCountryCode = countryCode + phone;
-          let otp = Math.floor(100000 + Math.random() * 900000);
+        let phone = args.data.phone;
+        //Validate phone number here;
+        let countryCode = "+91";
+        let phoneWithCountryCode = countryCode + phone;
+        let otp = Math.floor(100000 + Math.random() * 900000);
 
-          const user = await User.find({ phone });
+        const user = await User.find({ phone });
 
-          console.log(user);
+        console.log(user);
 
-          if(user.length == 0){ //User not found. Creating a doc with user phone
-            //new user creating a record
-            let userId = Math.floor(1000 + Math.random() * 9000).toString(); //Need to find a better way to store ids of all data models
-            const newUser = new User({ id: userId, phone });
-            const result = await newUser.save();
+        if (user.length == 0) {
+          //User not found. Creating a doc with user phone
+          //new user creating a record
+          let userId = Math.floor(1000 + Math.random() * 9000).toString(); //Need to find a better way to store ids of all data models
+          const newUser = new User({ id: userId, phone });
+          const result = await newUser.save();
 
-            if(!result){
-              return {
-                status: 500,
-                success: false
-              }
-            }
-          }
-
-          //Updating otp value in user doc. Store timestamp to validate otp in loginUser resolver
-          let query = { phone }
-          let updateData = {
-            otp: otp.toString(),
-            // otpTimestamp: 
-          }
-          
-          const result = await client.messages.create({
-            body: `Hey! use this OTP to login ${otp}`,
-            from: process.env.TWILIO_NUMBER,
-            to: phoneWithCountryCode,
-          });
-
-          if(result && result.sid){
-            const user = await User.findOneAndUpdate(query, updateData, { new: true });
-            if(user){
-              return {
-                success: true,
-                status: 200
-              }
-            }
-          }
-          else{
+          if (!result) {
             return {
-              success: false,
               status: 500,
+              success: false,
             };
           }
-      } 
-      catch(error) {
+        }
+
+        //Updating otp value in user doc. Store timestamp to validate otp in loginUser resolver
+        let query = { phone };
+        let updateData = {
+          otp: otp.toString(),
+          // otpTimestamp:
+        };
+
+        const result = await client.messages.create({
+          body: `Hey! use this OTP to login ${otp}`,
+          from: process.env.TWILIO_NUMBER,
+          to: phoneWithCountryCode,
+        });
+
+        if (result && result.sid) {
+          const user = await User.findOneAndUpdate(query, updateData, {
+            new: true,
+          });
+          if (user) {
+            return {
+              success: true,
+              status: 200,
+            };
+          }
+        } else {
+          return {
+            success: false,
+            status: 500,
+          };
+        }
+      } catch (error) {
         console.log(error);
         return {
           success: false,
           status: 500,
         };
       }
-    }
+    },
   },
 };
 
