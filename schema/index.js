@@ -250,16 +250,17 @@ export const resolvers = {
         if (payload.hasOwnProperty("isOnline")) {
           query = { isOnline: payload.isOnline, isLive: true };
         }
-
-        if (user) {
-          //Returning null if jwt token signed userId is not equal to payload userId
-          if(user.id != payload.userId){
+        
+        else{
+          if (user) {
+            //Returning null if jwt token signed userId is not equal to payload userId
+            if (user.id != payload.userId) {
+              return null;
+            }
+            query = { userId: payload.userId };
+          } else {
             return null;
           }
-          query = { userId: payload.userId };
-        }
-        else{
-          return null;
         }
 
         let data = await Event.find(query);
