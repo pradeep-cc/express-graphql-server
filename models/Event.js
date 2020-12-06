@@ -10,6 +10,10 @@ const schema = new mongoose.Schema({
   startTime: String,
   endTime: String,
   userId: String,
+  user: {
+    id: String,
+    name: String
+  },
   description: String,
   occurrences: Array,
   outcomes: Array,

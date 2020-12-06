@@ -39,7 +39,7 @@ const start = async () => {
       connectTimeoutMS: 20000
     });
 
-    app.listen(process.env.PORT || 3000, (error) => {
+    app.listen(process.env.PORT || 8080, (error) => {
       if (error) console.log("ERRROR");
       console.log(`listening: http://localhost:3000${server.graphqlPath}`);
     });
