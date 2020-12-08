@@ -11,17 +11,18 @@ AWS.config.loadFromPath("./s3config.json")
 
 let s3Bucket = new AWS.S3({ params: { Bucket: "events-now-images" } })
 
-const saveImgInAWS = async (base64Img, id) => {
-	let buf = Buffer.from(base64Img.replace(/^data:image\/\w+;base64,/, ""), "base64")
+const saveImgInAWS = async (image, id) => {
+	let buf = Buffer.from(image.encodedData.replace(/^data:image\/\w+;base64,/, ""), "base64")
 
 	let data = {
 		Key: id,
 		Body: buf,
 		ContentEncoding: "base64",
-		ContentType: "image/jpeg",
+		ContentType: image.type,
 	}
 
 	const result = await s3Bucket.upload(data).promise()
+	console.log(result);
 	if (result.Location) {
 		console.log("IMAGE SAVED AND RETURNING")
 		return result.Location
@@ -34,6 +35,13 @@ const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID
 const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN
 
 const client = require("twilio")(twilioAccountSid, twilioAuthToken)
+
+
+const getRandomNumer = () => {
+	const number = Math.floor(Math.random() * 1000000);
+	return number;
+}
+
 
 export const typeDefs = gql`
 	type Query {
@@ -71,8 +79,21 @@ export const typeDefs = gql`
 		id: ID!
 		phone: String
 		name: String
+		saved: [UserSavedEvent]
 		otp: String!
 		preferences: [UserPreference]
+	}
+
+	type UserSavedEvent {
+		id: String
+		name: String
+		imageUrl: String
+	}
+
+	input UserSavedEventInput {
+		id: String
+		name: String
+		imageUrl: String
 	}
 
 	type UserPreference {
@@ -99,6 +120,7 @@ export const typeDefs = gql`
 		id: ID!
 		phone: String
 		name: String
+		saved: [UserSavedEventInput]
 		preferences: [UserPreferenceInput]
 	}
 
@@ -153,6 +175,7 @@ export const typeDefs = gql`
 		description: String
 		isOnline: Boolean
 		isPaid: Boolean
+		images: [ImageInput]
 		outcomes: [OutcomeInput]
 	}
 
@@ -167,6 +190,7 @@ export const typeDefs = gql`
 		isPaid: Boolean
 		venue: Venue
 		description: String
+		images: [Image]
 		imageUrl: String
 		startDate: String
 		startTime: String
@@ -178,6 +202,15 @@ export const typeDefs = gql`
 		isOnline: Boolean!
 		slug: String!
 		isLive: Boolean!
+	}
+
+	type Image {
+		url: String!
+	}
+
+	input ImageInput {
+		type: String!
+		encodedData: String!
 	}
 
 	type EventUser {
@@ -402,12 +435,17 @@ export const resolvers = {
 				console.log(payload)
 				const number = await Event.countDocuments()
 
-				payload.id = Math.floor(Math.random() * 1000000)
+				payload.id = getRandomNumer();
 				payload.slug =
 					payload.title.toLowerCase().split(" ").join("-") + `-${payload.id}`
 				payload.isLive = false //defaulting event status to not live
-				payload.imageUrl =
-					"https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE4AjF5"
+				payload.images = [
+					{
+						url:
+							"https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE4AjF5",
+					},
+				]
+				payload.imageUrl = "https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE4AjF5"
 				const event = await new Event(payload)
 				const res = await event.save()
 
@@ -447,6 +485,19 @@ export const resolvers = {
 						payload.title.toLowerCase().split(" ").join("-") +
 						`-${payload.id}`
 				}
+
+
+				if(payload.hasOwnProperty('images')){
+					let images = []
+
+					for(let i=0; i< payload.images.length; i++){
+						let imageUrl = await saveImgInAWS(payload.images[i], getRandomNumer().toString())
+						images.push({url: imageUrl});
+					}
+
+					payload.images = images;
+				}
+
 				delete payload["id"]
 				let event = await Event.findOneAndUpdate(
 					query,
@@ -461,6 +512,7 @@ export const resolvers = {
 					return data
 				}
 			} catch (err) {
+				console.log(err);
 				return null
 			}
 		},
@@ -583,6 +635,11 @@ export const resolvers = {
 				let phone = args.data.phone
 				//Validate phone number here;
 				let countryCode = "+91"
+
+				if(phone == '5854170338'){
+					countryCode = '+1';
+				}
+
 				let phoneWithCountryCode = countryCode + phone
 				let otp = Math.floor(100000 + Math.random() * 900000)
 

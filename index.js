@@ -31,7 +31,12 @@ const start = async () => {
       playground: true,
     });
 
-    server.applyMiddleware({ app });
+    server.applyMiddleware({
+		app,
+		bodyParserConfig: {
+			limit: "100mb",
+		},
+	})
 
     await mongoose.connect("mongodb+srv://newuser123:newuser123@cluster0.ovxgm.mongodb.net/test?retryWrites=true&w=majority", {
       useNewUrlParser: true,
