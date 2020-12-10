@@ -82,6 +82,7 @@ export const typeDefs = gql`
 		saved: [UserSavedEvent]
 		otp: String!
 		preferences: [UserPreference]
+		profileImage: String
 	}
 
 	type UserSavedEvent {
@@ -122,6 +123,7 @@ export const typeDefs = gql`
 		name: String
 		saved: [UserSavedEventInput]
 		preferences: [UserPreferenceInput]
+		profileImage: String
 	}
 
 	input UserPreferenceInput {
@@ -397,6 +399,7 @@ export const resolvers = {
 								id: res.id,
 								name: res.name,
 								phone: res.phone,
+								profileImage: 'profileImage' in res ? res.profileImage : null
 							},
 						}
 
