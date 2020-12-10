@@ -177,6 +177,7 @@ export const typeDefs = gql`
 		isPaid: Boolean
 		images: [ImageInput]
 		outcomes: [OutcomeInput]
+		occurrences: [OccurrenceInput]
 	}
 
 	type UpdateEventPayload {
