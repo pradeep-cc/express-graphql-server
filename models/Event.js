@@ -19,7 +19,15 @@ const schema = new mongoose.Schema({
 	occurrences: Array,
 	outcomes: Array,
 	imageUrl: String,
-	venue: Object,
+	venue: {
+		name: String,
+		address: String,
+		city: String,
+		cityId: String,
+		state: String,
+		country: String,
+		pincode: String
+	},
 	isOnline: Boolean,
 	slug: String,
 	isLive: Boolean,

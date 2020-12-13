@@ -1,6 +1,7 @@
 import Event from "../models/Event";
 import Category from "../models/Category";
 import User from "../models/User";
+import City from "../models/City"
 const jsonwebtoken = require("jsonwebtoken");
 require("dotenv").config();
 
@@ -16,14 +17,20 @@ const city = async(parent, args) => {
 		}
 
 		if(args.googlePlaceId){
-			query = { name: args.googlePlaceId }
+			query = { googlePlaceId: args.googlePlaceId }
 		}
 
 		const city = await City.find(query);
+		let result = city[0];
 
-		if(city){
+		if(result){
 			return {
-				...city
+				id: result.id,
+				name: result.name,
+				lat: result.lat,
+				lng: result.lng,
+				googlePlaceId: result.googlePlaceId,
+				country: result.country,
 			}
 		}
 
@@ -47,7 +54,18 @@ const Query = {
 				let payload = { ...args.data }
 				let query;
 				if (payload.hasOwnProperty("isOnline")) {
-					query = { isOnline: payload.isOnline, isLive: true }
+					if(payload.isOnline){
+						query = { isOnline: payload.isOnline, isLive: true }
+					}
+					else{
+						if(payload.cityId){
+							query = { "venue.cityId": payload.cityId, isLive: true }
+						}
+						else{
+							return (data = [])
+						}
+					}
+					
 				} else {
 					if (user) {
 						//Returning null if jwt token signed userId is not equal to payload userId
@@ -59,8 +77,9 @@ const Query = {
 						return null
 					}
 				}
-
+				console.log(query);
 				let data = await Event.find(query)
+				console.log(data);
 				return data
 			} catch (err) {
 				console.log(err)
