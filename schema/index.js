@@ -63,7 +63,8 @@ export const typeDefs = gql`
 	}
 
 	input SendOtpInput {
-		phone: String!
+		type: OtpTypes
+		value: String!
 	}
 
 	type SendOtpPayload {
@@ -105,7 +106,8 @@ export const typeDefs = gql`
 	}
 
 	input loginUser {
-		phone: String!
+		type: OtpTypes
+		value: String
 		otp: String!
 	}
 
@@ -326,6 +328,11 @@ export const typeDefs = gql`
 	type SocialLoginPayload {
 		success: Boolean
 		user: User
+	}
+
+	enum OtpTypes {
+		phone
+		email
 	}
 
 `
