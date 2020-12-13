@@ -285,18 +285,13 @@ const Mutation = {
 
 	sendOtp: async (parent, args) => {
 		try {
-			let phone = args.data.phone
-			//Validate phone number here;
-			let countryCode = "+91"
+			let type = args.data.type;
 
-			if (phone == "5854170338") {
-				countryCode = "+1"
-			}
+			let addObj = type === "phone" ? { "phone": args.data.value } : { "email": args.data.value }
 
-			let phoneWithCountryCode = countryCode + phone
 			let otp = Math.floor(100000 + Math.random() * 900000)
-
-			const user = await User.find({ phone })
+			
+			const user = await User.find({ ...addObj })
 
 			console.log(user)
 
@@ -304,7 +299,7 @@ const Mutation = {
 				//User not found. Creating a doc with user phone
 				//new user creating a record
 				let userId = Math.floor(1000 + Math.random() * 9000).toString() //Need to find a better way to store ids of all data models
-				const newUser = new User({ id: userId, phone })
+				const newUser = new User({ id: userId, ...addObj })
 				const result = await newUser.save()
 
 				if (!result) {
@@ -316,17 +311,47 @@ const Mutation = {
 			}
 
 			//Updating otp value in user doc. Store timestamp to validate otp in loginUser resolver
-			let query = { phone }
+			let query = { ...addObj }
+
 			let updateData = {
 				otp: otp.toString(),
 				// otpTimestamp:
 			}
+			
+			if(type === 'phone'){
+				let phone = args.data.value;
+				//Validate phone number here;
+				let countryCode = "+91"
+	
+				if (phone == "5854170338") {
+					countryCode = "+1"
+				}
+	
+				let phoneWithCountryCode = countryCode + phone
 
-			client.messages.create({
-				body: `Hey! use this OTP to login ${otp}`,
-				from: process.env.TWILIO_NUMBER,
-				to: phoneWithCountryCode,
-			})
+				client.messages.create({
+					body: `Hey! use this OTP to login ${otp}`,
+					from: process.env.TWILIO_NUMBER,
+					to: phoneWithCountryCode,
+				})
+			} else {
+
+				let email = args.data.value;
+				
+				/** TODO
+				 * Add service key in env
+				*/
+				
+				client.verify.services('VAca0249138356bea65ffe56daeccdcf45')
+				.verifications
+				.create({channelConfiguration: {
+					substitutions: {
+						"otp": otp.toString()
+					}
+				}, to: email, channel: 'email'})
+			
+			}
+
 
 			const newUser = await User.findOneAndUpdate(query, updateData, {
 				new: true,

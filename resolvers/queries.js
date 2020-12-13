@@ -125,8 +125,11 @@ const Query = {
 		loginUser: async (parent, args) => {
 			try {
 				let payload = { ...args.data }
+				let type = payload.type;
 
-				const user = await User.find({ phone: payload.phone })
+				let addObj = type === "phone" ? { "phone": args.data.value } : { "email": args.data.value }
+
+				const user = await User.find({ ...addObj })
 				let res = user[0]
 
 				//validate otp
@@ -145,6 +148,7 @@ const Query = {
 								id: res.id,
 								name: res.name,
 								phone: res.phone,
+								email: res.email,
 								profileImage: 'profileImage' in res ? res.profileImage : null
 							},
 						}
