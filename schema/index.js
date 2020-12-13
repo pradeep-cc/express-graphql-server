@@ -254,6 +254,7 @@ export const typeDefs = gql`
 		name: String!
 		address: String!
 		city: String
+		cityId: String
 		state: String!
 		country: String!
 		pincode: String!
@@ -263,6 +264,7 @@ export const typeDefs = gql`
 		name: String!
 		address: String!
 		city: String
+		cityId: String
 		state: String!
 		country: String!
 		pincode: String!
@@ -309,6 +311,7 @@ export const typeDefs = gql`
 		isOnline: Boolean
 		userId: String
 		isLive: Boolean
+		cityId: String
 	}
 
 	enum SocialTypes {
