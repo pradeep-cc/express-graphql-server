@@ -369,6 +369,77 @@ const Mutation = {
 	},
 
 	createCity: createCity,
+	
+	/**
+	 * Added By Maaz on 13 Dec 
+	 * Social Login Mutation
+	 */
+
+	 socialLogin: async (parent, args) => {
+		try {
+			let payload = { ...args.data }
+			/* Check if user exists */
+			const user = await User.find({ email: payload.email });
+			let res = user[0]
+			let socialType = {
+				...(payload.type === "facebook" && { "facebookToken": payload.token }),
+				...(payload.type === "linkedIn" && { "twitterToken": payload.token }),
+				...(payload.type === "twitter" && { "linkedInToken": payload.token }),
+				...(payload.type === "google" && { "googleToken": payload.token })
+			};
+			/* If user exists then update the social login token and send back response */
+			if (res) {
+				let updatePayload = {
+					...socialType
+				};
+				const query = { id: res.id }
+				const updatedUser = await User.findOneAndUpdate(query, updatePayload, { new: true })
+				if (updatedUser) {
+					delete user["_id"]
+					let data = {
+						success: true,
+						user: updatedUser
+					}
+					return data
+				}
+	
+				throw("Failed to update user");
+			} 
+			/* If user doesn't exist then create a new user and send back the response */
+			else {
+				let createInput = {
+					...socialType,
+					name: payload.name,
+					email: payload.email
+				}
+				const number = await User.countDocuments()
+				createInput.id = number + 1
+				const newUser = new User(createInput)
+				const createRes = await newUser.save()
+				if (createRes) {
+					let data = {
+						success: true,
+						user: {
+							id: createRes.id,
+							name: createRes.name,
+							email: createRes.phone,
+							...(payload.type === "facebook" && { "facebookToken": createRes.facebookToken }),
+							...(payload.type === "linkedIn" && { "twitterToken": createRes.twitterToken }),
+							...(payload.type === "twitter" && { "linkedInToken": createRes.linkedInToken }),
+							...(payload.type === "google" && { "googleToken": createRes.googleToken })
+						},
+					}
+	
+					return data
+				}
+
+				throw("Failed to create user");
+			}
+		} catch (err) {
+			console.log(err)
+			return { success: false, user: null }
+		}
+	},
 }
 
 

@@ -36,6 +36,8 @@ export const typeDefs = gql`
 		sendOtp(data: SendOtpInput): SendOtpPayload
 
 		createCity(data: CreateCityInput): CreateCityPayload
+
+		socialLogin(data: SocialLoginInput) : SocialLoginPayload
 	}
 
 	input CreateCityInput {
@@ -72,11 +74,16 @@ export const typeDefs = gql`
 	type User {
 		id: ID!
 		phone: String
+		email: String
 		name: String
 		saved: [UserSavedEvent]
-		otp: String!
+		otp: String
 		preferences: [UserPreference]
 		profileImage: String
+		facebookToken: String
+		twitterToken: String
+		linkedInToken: String
+		googleToken: String
 	}
 
 	type UserSavedEvent {
@@ -301,6 +308,26 @@ export const typeDefs = gql`
 		userId: String
 		isLive: Boolean
 	}
+
+	enum SocialTypes {
+		facebook
+		linkedIn
+		twitter
+		google
+	  }
+
+	input SocialLoginInput {
+		email: String!
+		name: String!
+		token: String!
+		type: SocialTypes!
+	}
+
+	type SocialLoginPayload {
+		success: Boolean
+		user: User
+	}
+
 `
 
 export const resolvers = {
