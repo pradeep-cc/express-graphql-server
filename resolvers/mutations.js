@@ -390,30 +390,31 @@ const Mutation = {
 			/* If user exists then update the social login token and send back response */
 			if (res) {
 				let updatePayload = {
-					...socialType
-				};
+					...socialType,
+				}
 				const query = { id: res.id }
-				const updatedUser = await User.findOneAndUpdate(query, updatePayload, { new: true })
+				const updatedUser = await User.findOneAndUpdate(query, updatePayload, {
+					new: true,
+				})
 				if (updatedUser) {
 					delete user["_id"]
 					let data = {
 						success: true,
-						user: updatedUser
+						user: updatedUser,
 					}
 					return data
 				}
-	
-				throw("Failed to update user");
-			} 
+
+				throw "Failed to update user"
+			} else {
 			/* If user doesn't exist then create a new user and send back the response */
-			else {
 				let createInput = {
 					...socialType,
 					name: payload.name,
-					email: payload.email
+					email: payload.email,
 				}
-				const number = await User.countDocuments()
-				createInput.id = number + 1
+				// const number = await User.countDocuments()
+				createInput.id = Math.floor(1000 + Math.random() * 9000).toString() //Need to find a better way to store ids of all data models
 				const newUser = new User(createInput)
 				const createRes = await newUser.save()
 				if (createRes) {
@@ -423,17 +424,25 @@ const Mutation = {
 							id: createRes.id,
 							name: createRes.name,
 							email: createRes.phone,
-							...(payload.type === "facebook" && { "facebookToken": createRes.facebookToken }),
-							...(payload.type === "linkedIn" && { "twitterToken": createRes.twitterToken }),
-							...(payload.type === "twitter" && { "linkedInToken": createRes.linkedInToken }),
-							...(payload.type === "google" && { "googleToken": createRes.googleToken })
+							...(payload.type === "facebook" && {
+								facebookToken: createRes.facebookToken,
+							}),
+							...(payload.type === "linkedIn" && {
+								twitterToken: createRes.twitterToken,
+							}),
+							...(payload.type === "twitter" && {
+								linkedInToken: createRes.linkedInToken,
+							}),
+							...(payload.type === "google" && {
+								googleToken: createRes.googleToken,
+							}),
 						},
 					}
-	
+
 					return data
 				}
 
-				throw("Failed to create user");
+				throw "Failed to create user"
 			}
 		} catch (err) {
 			console.log(err)
