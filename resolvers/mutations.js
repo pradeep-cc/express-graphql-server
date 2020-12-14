@@ -88,8 +88,11 @@ const createCity = async (parent, args) => {
 
 
 const Mutation = {
-	createEvent: async (parent, args) => {
+	createEvent: async (parent, args, { user }) => {
 		try {
+
+			if (!user) return null
+
 			let payload = { ...args.data }
 			console.log(payload)
 			const number = await Event.countDocuments()
@@ -135,8 +138,13 @@ const Mutation = {
 		}
 	},
 
-	updateEvent: async (parent, args) => {
+	updateEvent: async (parent, args, { user }) => {
 		try {
+
+
+			if (!user) return null
+
+
 			let payload = { ...args.data }
 			const query = { id: args.data.id }
 
@@ -174,8 +182,11 @@ const Mutation = {
 		}
 	},
 
-	deleteEvent: async (parent, args) => {
+	deleteEvent: async (parent, args, { user }) => {
 		try {
+
+			if (!user) return null
+
 			let eventId = args.id
 
 			const event = await Event.findOneAndDelete({ id: eventId })
@@ -263,16 +274,19 @@ const Mutation = {
 		}
 	},
 
-	updateUser: async (parent, args) => {
+	updateUser: async (parent, args, { user }) => {
 		try {
+
+			if (!user) return null
+
 			let payload = { ...args.data }
 			const query = { id: payload.id }
-			let user = await User.findOneAndUpdate(query, { ...payload }, { new: true })
-			console.log(user)
-			if (user) {
-				delete user["_id"]
+			let updatedUser = await User.findOneAndUpdate(query, { ...payload }, { new: true })
+			console.log(updatedUser)
+			if (updatedUser) {
+				delete updatedUser["_id"]
 				let data = {
-					user,
+					user: updatedUser,
 				}
 				return data
 			}
