@@ -28,7 +28,8 @@ const start = async () => {
         const token = req.get("Authorization") || "";
         return { user: getUser(token.replace("Bearer", "")) };
       },
-      playground: true,
+      introspection: true,
+      playground: true
     });
 
     server.applyMiddleware({
