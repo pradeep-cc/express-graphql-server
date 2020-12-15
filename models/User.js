@@ -4,14 +4,11 @@ const schema = new mongoose.Schema({
 	id: String,
 	name: String,
 	phone: String,
-	email: String,
+	emails: Array,
 	preferences: Array,
 	otp: String,
 	profileImage: String,
-	facebookToken: String,
-	twitterToken: String,
-	linkedInToken: String,
-	googleToken: String
+	socialLogins: Array
 })
 
 const User = mongoose.model("User", schema)

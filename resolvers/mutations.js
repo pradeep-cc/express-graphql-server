@@ -301,7 +301,7 @@ const Mutation = {
 		try {
 			let type = args.data.type;
 
-			let addObj = type === "phone" ? { "phone": args.data.value } : { "email": args.data.value }
+			let addObj = type === "phone" ? { "phone": args.data.value } : { "emails.value": args.data.value }
 
 			let otp = Math.floor(100000 + Math.random() * 900000)
 			
@@ -310,10 +310,22 @@ const Mutation = {
 			console.log(user)
 
 			if (user.length == 0) {
+				/* No user found */
+				if(!args.data.isSignup){
+					return {
+						status: 200,
+						success: false,
+					}
+				}
 				//User not found. Creating a doc with user phone
-				//new user creating a record
+				// new user creating a record
 				let userId = Math.floor(1000 + Math.random() * 9000).toString() //Need to find a better way to store ids of all data models
-				const newUser = new User({ id: userId, ...addObj })
+				const newUser = new User({ 
+					id: userId, 
+					phone: type === "phone" ? args.data.value : "", 
+					emails: type === "phone" ? [] : [{ priority: 1 , value: args.data.value, verified: false }], 
+					socialLogins: []
+				 })
 				const result = await newUser.save()
 
 				if (!result) {
@@ -418,18 +430,23 @@ const Mutation = {
 		try {
 			let payload = { ...args.data }
 			/* Check if user exists */
-			const user = await User.find({ email: payload.email });
+			const user = await User.find({ "phone": payload.phone });
 			let res = user[0]
-			let socialType = {
-				...(payload.type === "facebook" && { "facebookToken": payload.token }),
-				...(payload.type === "linkedIn" && { "twitterToken": payload.token }),
-				...(payload.type === "twitter" && { "linkedInToken": payload.token }),
-				...(payload.type === "google" && { "googleToken": payload.token })
-			};
+
 			/* If user exists then update the social login token and send back response */
+			let updatedArr = [{"type": payload.type, "auth": payload.token}];
 			if (res) {
-				let updatePayload = {
-					...socialType,
+				let updatePayload = 
+				{
+					socialLogins: updatedArr.concat( 
+						res.socialLogins.filter( s => 
+							!updatedArr.find( t => t.type === s.type ) 
+						)
+					),
+				};
+				if (!res.emails.some(e => e.value === payload.email)) {
+					res.emails.push({priority: res.emails.length + 1, value: payload.email, verified: false});
+					updatePayload.emails = res.emails;
 				}
 				const query = { id: res.id }
 				const updatedUser = await User.findOneAndUpdate(query, updatePayload, {
@@ -446,11 +463,19 @@ const Mutation = {
 
 				throw "Failed to update user"
 			} else {
+				/* Checking if user with phone exists or not */
+				const userByEmail = await User.find({ "emails.value": payload.email });
+				if(userByEmail.length > 0 && userByEmail[0].phone != payload.phone){
+					throw "User with same email already exists";
+				}
+				let otp = Math.floor(100000 + Math.random() * 900000);
 			/* If user doesn't exist then create a new user and send back the response */
 				let createInput = {
-					...socialType,
+					socialLogins: updatedArr,
 					name: payload.name,
-					email: payload.email,
+					phone: payload.phone,
+					emails: [{ priority: 1, value: payload.email, verified: false }],
+					otp
 				}
 				// const number = await User.countDocuments()
 				createInput.id = Math.floor(1000 + Math.random() * 9000).toString() //Need to find a better way to store ids of all data models
@@ -462,21 +487,30 @@ const Mutation = {
 						user: {
 							id: createRes.id,
 							name: createRes.name,
-							email: createRes.phone,
-							...(payload.type === "facebook" && {
-								facebookToken: createRes.facebookToken,
-							}),
-							...(payload.type === "linkedIn" && {
-								twitterToken: createRes.twitterToken,
-							}),
-							...(payload.type === "twitter" && {
-								linkedInToken: createRes.linkedInToken,
-							}),
-							...(payload.type === "google" && {
-								googleToken: createRes.googleToken,
-							}),
+							emails: createRes.emails,
+							phone: createRes.phone,
+							socialLogins: createRes.socialLogins,
+							otp: createRes.otp
 						},
 					}
+					let phone = createRes.phone;
+					// @pradeep verify this once please
+
+					//Validate phone number here;
+
+					let countryCode = "+91"
+		
+					if (phone == "5854170338") {
+						countryCode = "+1"
+					}
+		
+					let phoneWithCountryCode = countryCode + phone
+
+					client.messages.create({
+						body: `Hey! use this OTP to login ${otp}`,
+						from: process.env.TWILIO_NUMBER,
+						to: phoneWithCountryCode,
+					})
 
 					return data
 				}
@@ -485,7 +519,7 @@ const Mutation = {
 			}
 		} catch (err) {
 			console.log(err)
-			return { success: false, user: null }
+			return { success: false, user: null, message: err }
 		}
 	},
 }

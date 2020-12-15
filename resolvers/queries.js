@@ -127,10 +127,12 @@ const Query = {
 				let payload = { ...args.data }
 				let type = payload.type;
 
-				let addObj = type === "phone" ? { "phone": args.data.value } : { "email": args.data.value }
+				let addObj = type === "phone" ? { "phone": args.data.value } : { "emails.value": args.data.value }
 
 				const user = await User.find({ ...addObj })
 				let res = user[0]
+				console.log("result");
+				console.log(res);
 
 				//validate otp
 
@@ -148,8 +150,10 @@ const Query = {
 								id: res.id,
 								name: res.name,
 								phone: res.phone,
-								email: res.email,
-								profileImage: 'profileImage' in res ? res.profileImage : null
+								emails: res.emails,
+								profileImage: 'profileImage' in res ? res.profileImage : null,
+								socialLogins: res.socialLogins,
+								preferences: res.preferences
 							},
 						}
 

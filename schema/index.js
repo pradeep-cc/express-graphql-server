@@ -63,8 +63,9 @@ export const typeDefs = gql`
 	}
 
 	input SendOtpInput {
-		type: OtpTypes
+		type: OtpTypes!
 		value: String!
+		isSignup: Boolean!
 	}
 
 	type SendOtpPayload {
@@ -72,19 +73,27 @@ export const typeDefs = gql`
 		status: Int
 	}
 
+	type SocialLogins {
+		type: SocialTypes
+		auth: String
+	}
+
+	type Emails {
+		priority: Int
+		value: String
+		verified: Boolean
+	}
+
 	type User {
 		id: ID!
 		phone: String
-		email: String
+		emails: [Emails]
 		name: String
 		saved: [UserSavedEvent]
 		otp: String
 		preferences: [UserPreference]
 		profileImage: String
-		facebookToken: String
-		twitterToken: String
-		linkedInToken: String
-		googleToken: String
+		socialLogins: [SocialLogins]
 	}
 
 	type UserSavedEvent {
@@ -106,8 +115,8 @@ export const typeDefs = gql`
 	}
 
 	input loginUser {
-		type: OtpTypes
-		value: String
+		type: OtpTypes!
+		value: String!
 		otp: String!
 	}
 
@@ -324,6 +333,7 @@ export const typeDefs = gql`
 	input SocialLoginInput {
 		email: String!
 		name: String!
+		phone: String!
 		token: String!
 		type: SocialTypes!
 	}
@@ -331,6 +341,7 @@ export const typeDefs = gql`
 	type SocialLoginPayload {
 		success: Boolean
 		user: User
+		message: String
 	}
 
 	enum OtpTypes {
